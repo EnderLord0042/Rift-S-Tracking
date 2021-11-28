@@ -2,6 +2,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/features2d.hpp"
+#include "opencv2/calib3d.hpp"
 #include <iostream>
 
 using namespace cv;
@@ -59,6 +60,28 @@ int main() {
         rotate(rightCam, rightCam, ROTATE_90_COUNTERCLOCKWISE);
         rotate(frontLeftCam, frontLeftCam, ROTATE_90_COUNTERCLOCKWISE);
         rotate(frontRightCam, frontRightCam, ROTATE_90_COUNTERCLOCKWISE);
+
+        Mat map_x(leftCam.size(), CV_32FC1);
+        Mat map_y(leftCam.size(), CV_32FC1);
+
+        float radius = 1000;
+        float strength = 20000;
+
+        for( int i = 0; i < map_x.rows; i++ ) {
+          for( int i2 = 0; i2 < map_x.cols; i2++ ) {
+            map_x.at<float>(i2,i) = 240+((i2-240)/sqrt((i2-240)*(i2-240)+(i-320)+(i-320)))*sqrt((radius*radius*(i2-240)*(i2-240)+radius*radius*(i-320)*(i-320))/(strength+(i2-240)*(i2-240)+(i-320)*(i-320)));
+          }
+        }
+        for( int i = 0; i < map_y.rows; i++ ) {
+          for( int i2 = 0; i2 < map_y.cols; i2++ ) {
+            map_y.at<float>(i2,i) = 320+((i-320)/sqrt((i2-240)*(i2-240)+(i-320)+(i-320)))*sqrt((radius*radius*(i2-240)*(i2-240)+radius*radius*(i-320)*(i-320))/(strength+(i2-240)*(i2-240)+(i-320)*(i-320)));
+          }
+        }
+
+        imshow("Remap X", map_x);
+        imshow("Remap Y", map_y);
+
+        remap(leftCam,leftCam,map_x,map_y,INTER_NEAREST,BORDER_CONSTANT,Scalar(0,0,0));
 
         Ptr<ORB> keyPointDetector = ORB::create(); // Create an orb key point detector
         /* IMPORTANT This is where you change what a keypoint is          */
@@ -158,8 +181,8 @@ int main() {
           tempRight.push_back(keypoints_right[i.trainIdx]);
         }
 
-        drawKeypoints(frontLeftCam, tempLeft, frontLeftCam, Scalar(255, 0, 0));
-        drawKeypoints(frontRightCam, tempRight, frontRightCam, Scalar(255, 0, 0));
+        // drawKeypoints(frontLeftCam, tempLeft, frontLeftCam, Scalar(255, 0, 0));
+        // drawKeypoints(frontRightCam, tempRight, frontRightCam, Scalar(255, 0, 0));
 
         // Shows the visble light images
         imshow("Stereo Matches", stereoImg);
