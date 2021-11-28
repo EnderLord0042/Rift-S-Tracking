@@ -36,6 +36,9 @@ int main() {
     Mat stereoImg;
     Mat susImg;
 
+    vector<vector<KeyPoint>> oldLeftKeypoints;
+    vector<vector<KeyPoint>> oldRightKeypoints;
+
     while (true) {
       cap.read(frame); //setting frame to the current frame of video
 
@@ -84,24 +87,79 @@ int main() {
         descriptors_right.convertTo(descriptors_right, CV_32F);
 
         // Finds matching keypoints
-        FlannBasedMatcher matcher;
         vector<DMatch> matches;
-        matcher.match( descriptors_left, descriptors_right, matches);
-
+        if (keypoints_left.size() != 0 && keypoints_right.size() != 0) { //Check for keypoints to prevent crash on no keypoints
+          FlannBasedMatcher matcher;
+          matcher.match( descriptors_left, descriptors_right, matches);
+        }
 
         // Remove matches that are not horizontaly across from each other
         // Because of the stario cameras, matches should only be horizontally accross from each other
         int verticalDifference = 5; // can be changed for sensitivity (default 5)
-        std::vector<DMatch> gooder_matches;
+
+        vector<DMatch> stereo_matches;
+
+        vector<KeyPoint> stereo_keypoints_left, stereo_keypoints_right;
 
         for(DMatch i : matches) {
           if(abs(keypoints_left[i.queryIdx].pt.y-keypoints_right[i.trainIdx].pt.y) <= verticalDifference) {
-            gooder_matches.push_back(i);
+            stereo_keypoints_left.push_back(keypoints_left[i.queryIdx]);
+            stereo_keypoints_right.push_back(keypoints_right[i.trainIdx]);
+            stereo_matches.push_back(i);
           }
         }
 
+        vector<DMatch> persistent_stereo_matches;
+
+        float maximumDistance = 10000.0;
+
+        for (DMatch i : stereo_matches) {
+          int timesInRange = 0;
+          for (vector<KeyPoint> i2 : oldLeftKeypoints) {
+            for (KeyPoint i3 : i2) {
+              if ((keypoints_left[i.queryIdx].pt.x - i3.pt.x)*(keypoints_left[i.queryIdx].pt.x - i3.pt.x) +
+                  (keypoints_left[i.queryIdx].pt.y - i3.pt.y)*(keypoints_left[i.queryIdx].pt.y - i3.pt.y) <= maximumDistance) {
+                timesInRange = timesInRange + 1;
+                break;
+              }
+            }
+          }
+          for (vector<KeyPoint> i2 : oldRightKeypoints) {
+            for (KeyPoint i3 : i2) {
+              if ((keypoints_right[i.trainIdx].pt.x - i3.pt.x)*(keypoints_right[i.trainIdx].pt.x - i3.pt.x) +
+                  (keypoints_right[i.trainIdx].pt.y - i3.pt.y)*(keypoints_right[i.trainIdx].pt.y - i3.pt.y) <= maximumDistance) {
+                timesInRange = timesInRange + 1;
+                break;
+              }
+            }
+          }
+          if (timesInRange >= 6) {
+            persistent_stereo_matches.push_back(i);
+          }
+        }
+
+        oldLeftKeypoints.push_back(stereo_keypoints_left);
+        oldRightKeypoints.push_back(stereo_keypoints_right);
+        if (oldLeftKeypoints.size() > 4) {
+          oldLeftKeypoints.erase(oldLeftKeypoints.begin());
+        }
+        if (oldRightKeypoints.size() > 4) {
+          oldRightKeypoints.erase(oldLeftKeypoints.begin());
+        }
+
         // Draws debug lines to stario image camera
-        drawMatches(frontLeftCam, keypoints_left, frontRightCam, keypoints_right, gooder_matches, stereoImg, Scalar(0,255,0),Scalar(0,0,255),vector<char>());
+        drawMatches(frontLeftCam, keypoints_left, frontRightCam, keypoints_right, persistent_stereo_matches, stereoImg, Scalar(0,255,0),Scalar(0,0,255),vector<char>());
+
+        vector<KeyPoint> tempLeft;
+        vector<KeyPoint> tempRight;
+
+        for (DMatch i : persistent_stereo_matches) {
+          tempLeft.push_back(keypoints_left[i.queryIdx]);
+          tempRight.push_back(keypoints_right[i.trainIdx]);
+        }
+
+        drawKeypoints(frontLeftCam, tempLeft, frontLeftCam, Scalar(255, 0, 0));
+        drawKeypoints(frontRightCam, tempRight, frontRightCam, Scalar(255, 0, 0));
 
         // Shows the visble light images
         imshow("Stereo Matches", stereoImg);
@@ -120,6 +178,12 @@ int main() {
         frontRightCam_controller = frame(Rect(1280,40,640,480));
         frontLeftCam_controller = frame(Rect(1920,40,640,480));
         upCam_controller = frame(Rect(0,40,640,480));
+
+        // Rotate images to correct orientation
+        rotate(leftCam_controller, leftCam_controller, ROTATE_90_COUNTERCLOCKWISE);
+        rotate(rightCam_controller, rightCam_controller, ROTATE_90_COUNTERCLOCKWISE);
+        rotate(frontLeftCam_controller, frontLeftCam_controller, ROTATE_90_COUNTERCLOCKWISE);
+        rotate(frontRightCam_controller, frontRightCam_controller, ROTATE_90_COUNTERCLOCKWISE);
 
         // Shows IR images
         imshow("Right Camera Controller View", rightCam_controller);
