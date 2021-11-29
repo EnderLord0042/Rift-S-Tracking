@@ -61,27 +61,26 @@ int main() {
         rotate(frontLeftCam, frontLeftCam, ROTATE_90_COUNTERCLOCKWISE);
         rotate(frontRightCam, frontRightCam, ROTATE_90_COUNTERCLOCKWISE);
 
-        Mat map_x(leftCam.size(), CV_32FC1);
-        Mat map_y(leftCam.size(), CV_32FC1);
+        Mat map_x(frontLeftCam.size(), CV_32FC1);
+        Mat map_y(frontLeftCam.size(), CV_32FC1);
 
-        float radius = 1000;
-        float strength = 20000;
+        float radius = 360; // I'll explain more later: https://www.desmos.com/calculator/sr15zwfdbw
 
         for( int i = 0; i < map_x.rows; i++ ) {
           for( int i2 = 0; i2 < map_x.cols; i2++ ) {
-            map_x.at<float>(i2,i) = 240+((i2-240)/sqrt((i2-240)*(i2-240)+(i-320)+(i-320)))*sqrt((radius*radius*(i2-240)*(i2-240)+radius*radius*(i-320)*(i-320))/(strength+(i2-240)*(i2-240)+(i-320)*(i-320)));
+            map_x.at<float>(i,i2) = 240+((i2-240)/sqrt((i2-240)*(i2-240)+(i-320)*(i-320)))*sqrt((radius*radius*(i2-240)*(i2-240)+radius*radius*(i-320)*(i-320))/(radius*radius+(i2-240)*(i2-240)+(i-320)*(i-320)));
           }
         }
         for( int i = 0; i < map_y.rows; i++ ) {
           for( int i2 = 0; i2 < map_y.cols; i2++ ) {
-            map_y.at<float>(i2,i) = 320+((i-320)/sqrt((i2-240)*(i2-240)+(i-320)+(i-320)))*sqrt((radius*radius*(i2-240)*(i2-240)+radius*radius*(i-320)*(i-320))/(strength+(i2-240)*(i2-240)+(i-320)*(i-320)));
+            map_y.at<float>(i,i2) = 320+((i-320)/sqrt((i2-240)*(i2-240)+(i-320)*(i-320)))*sqrt((radius*radius*(i2-240)*(i2-240)+radius*radius*(i-320)*(i-320))/(radius*radius+(i2-240)*(i2-240)+(i-320)*(i-320)));
           }
         }
 
         imshow("Remap X", map_x);
         imshow("Remap Y", map_y);
 
-        remap(leftCam,leftCam,map_x,map_y,INTER_NEAREST,BORDER_CONSTANT,Scalar(0,0,0));
+        remap(frontLeftCam,frontLeftCam,map_x,map_y,INTER_NEAREST,BORDER_CONSTANT,Scalar(0,0,0));
 
         Ptr<ORB> keyPointDetector = ORB::create(); // Create an orb key point detector
         /* IMPORTANT This is where you change what a keypoint is          */
