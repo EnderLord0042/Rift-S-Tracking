@@ -64,7 +64,7 @@ int main() {
         Mat map_x(frontLeftCam.size(), CV_32FC1);
         Mat map_y(frontLeftCam.size(), CV_32FC1);
 
-        float radius = 360; // I'll explain more later: https://www.desmos.com/calculator/sr15zwfdbw
+        float radius = 360; // see math at https://www.desmos.com/calculator/ihqq6tcfa5
 
         for( int i = 0; i < map_x.rows; i++ ) {
           for( int i2 = 0; i2 < map_x.cols; i2++ ) {
